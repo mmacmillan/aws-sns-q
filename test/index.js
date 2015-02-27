@@ -107,6 +107,14 @@ describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() 
             }, done);
     });
 
+    it('can receive a message', function(done) {
+        sns.endpoint.message('test message!', endpointArn).then(function(result) {
+            assert(!!result.ResponseMetadata);
+            assert(!!result.MessageId && result.MessageId.length > 0);
+            done();
+        }, done);
+    });
+
     it('can be deleted', function(done) {
         sns.endpoint.delete(endpointArn).then(function(result) {
             assert(!!result.ResponseMetadata);
