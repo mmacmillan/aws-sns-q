@@ -149,8 +149,30 @@ var endpoint = {
     delete: function(arn) {
         var params = { EndpointArn: arn };
         return this.svc.deleteEndpoint(params);
-    }
+    },
 
+    /**
+     * sends a message to the target endpoint.  accepts either a string message, or a message object
+     *
+     * @param {String} msg the message string to send, or a message object
+     * @param {String} endpointArn the EndpointArn of the endpoint that should receive the message
+     */
+    message: function(msg, endpointArn) {
+        var params = {
+            Message: {},
+            MessageStructure: 'json',
+            TargetArn: endpointArn
+        };
+
+        if(typeof(msg) === 'string') {
+            params.Message["APNS_SANDBOX"] = JSON.stringify({
+                aps: { alert: msg }
+            });
+        }
+
+        params.Message = JSON.stringify(params.Message);
+        return this.svc.publish(params);
+    }
 };
 
 
