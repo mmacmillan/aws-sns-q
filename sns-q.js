@@ -4,10 +4,18 @@
  * @author Mike MacMillan (mikejmacmillan@gmail.com)
  */
 
+//**** CURRENTLY only APNS/APNS_SANDBOX is supported
+
 var Q = require('q'),
     _ = require('lodash'),
     aws = require('aws-sdk');
 
+var platforms = {
+    ADM: 'ADM',
+    GCM: 'GCM',
+    APNS: 'APNS',
+    APNSSandbox: 'APNS_SANDBOX'
+};
 
 var application = {
     /**
@@ -152,22 +160,39 @@ var endpoint = {
     },
 
     /**
-     * sends a message to the target endpoint.  accepts either a string message, or a message object
+     * sends a message to the target endpoint.  accepts either a string message, or a message object.  if
+     * an object is provided, it is assumed to include the message configuration for each platform intended. 
+     * use an object if you intend to update the badge/count, play a sound, etc.  Make sure each
+     * platforms message object is in string format (JSON.stringify).  see here for more details on targetting
+     * multiple platforms with a single message:
      *
+     * http://docs.aws.amazon.com/sns/latest/dg/mobile-push-send-custommessage.html
+     *
+     * also, and object of arguments may be specified, that based on the platform, will be attached to the 
+     * paylod; this can be used for routing, actions, etc
+     *
+     * @param {String} arn the EndpointArn of the endpoint that should receive the message
      * @param {String} msg the message string to send, or a message object
-     * @param {String} endpointArn the EndpointArn of the endpoint that should receive the message
+     * @param {Object} args additional arguments to be mixed in with the message object
      */
-    message: function(msg, endpointArn) {
-        var params = {
-            Message: {},
-            MessageStructure: 'json',
-            TargetArn: endpointArn
-        };
+    message: function(arn, msg, args) {
+        var sandbox = arn && arn.indexOf(platforms.APNSSandbox) != -1,
+            params = {
+                Message: typeof(msg) !== 'string' ? msg : {},
+                MessageStructure: 'json',
+                TargetArn: arn
+            };
 
+        //** currently in testing, limited to APNS/APNS_SANDBOX
         if(typeof(msg) === 'string') {
-            params.Message["APNS_SANDBOX"] = JSON.stringify({
-                aps: { alert: msg }
+            //** ios
+            params.Message[sandbox?platforms.APNSSandbox:platforms.APNS] = JSON.stringify({
+                aps: { 
+                    alert: _.extend({}, { body: msg }, args||{})
+                }
             });
+
+            //** android
         }
 
         params.Message = JSON.stringify(params.Message);

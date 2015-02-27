@@ -108,7 +108,7 @@ describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() 
     });
 
     it('can receive a message', function(done) {
-        sns.endpoint.message('test message!', endpointArn).then(function(result) {
+        sns.endpoint.message(endpointArn, 'test message!').then(function(result) {
             assert(!!result.ResponseMetadata);
             assert(!!result.MessageId && result.MessageId.length > 0);
             done();
