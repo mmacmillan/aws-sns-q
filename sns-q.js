@@ -176,6 +176,68 @@ var endpoint = {
 };
 
 
+var topic = {
+    /**
+     * creates a topic with the given name, or returns the existing topic 
+     * 
+     * @param {String} name name of the topic
+     */ 
+    create: function(name) {
+        var params = { Name: name };
+
+        return this.svc.createTopic(params);
+    },
+
+    /**
+     * gets the topic object's attributes
+     * 
+     * @param {String} arn the TopicArn of the target topic
+     */
+    get: function(arn) {
+        var params = { TopicArn: arn };
+        return this.svc.getTopicAttributes(params);
+    },
+
+    /** 
+     * updates the attributes for the specified topic.  only a few of the attributes can be updated, those
+     * being: Policy, DisplayName, and DeliveryPolicy
+     * 
+     * @param {String} arn the TopicArn of the target topic
+     * @param {String} name the name of the attribute to update
+     * @param {String} value the value of the attribute to update
+     */
+    update: function(arn, name, value) {
+        var params = {
+            AttributeName: name,
+            AttributeValue: value,
+            TopicArn: arn
+        };
+
+        return this.svc.setTopicAttributes(params);
+    },
+
+    /** 
+     * returns a list of all topics for this account
+     * 
+     * @param {String} token the token returned from the previous call, to access the next set of objects
+     */
+    list: function(token) {
+        return this.svc.listTopics(token);
+    },
+
+
+    /**
+     * deletes the target topic object
+     * 
+     * @param {String} arn the TopicArn of the topic to delete
+     */
+    delete: function(arn) {
+        var params = { TopicArn: arn };
+        return this.svc.deleteTopic(params);
+    }
+};
+
+
 
 
 //** simple wrapper function for introducing a promise interface
@@ -211,6 +273,7 @@ function snsQ(opt) {
     //** scope each of the individual service libs
     this.application = _.reduce(application, scope, {}); 
     this.endpoint = _.reduce(endpoint, scope, {}); 
+    this.topic = _.reduce(topic, scope, {}); 
 }
 
 module.exports = snsQ;
