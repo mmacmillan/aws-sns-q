@@ -6,14 +6,18 @@ var assert = require('assert'),
 var sns = new snsQ({
     region: config.snsRegion,
     accessKeyId: config.snsUserKey,
-    secretAccessKey: config.snsUserSecret
+    secretAccessKey: config.snsUserSecret,
+    sandbox: true
 });
 
+console.log('tests use:');
+console.log('    PlatformApplicationArn:', config.platformApplicationArn);
+console.log('    iOS Device Token:', config.iosDeviceToken);
 
 /*
  * PlatformApplication Tests
  */
-describe('Application; using PlatformApplicationArn '+ config.platformApplicationArn, function() {
+describe('Applications', function() {
     this.timeout(config.timeout);
 
     it('should have attributes', function(done) {
@@ -74,13 +78,13 @@ describe('Application; using PlatformApplicationArn '+ config.platformApplicatio
 /*
  * PlatformEndpoint Tests
  */
-describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() {
+describe('Endpoints' , function() {
     var endpointArn = null;
 
     this.timeout(config.timeout);
 
     it('can create endpoint for application', function(done) {
-        sns.endpoint.create(config.platformApplicationArn, config.iosDeviceToken, "someTag=someValue").then(function(data) {
+        sns.endpoint.create(config.platformApplicationArn, config.iosDeviceToken).then(function(data) {
             //** grab the endpointArn returned, for use in the next test
             endpointArn = data.EndpointArn;
 
@@ -97,7 +101,7 @@ describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() 
     });
 
     it('can be updated', function(done) {
-        var changes = { CustomUserData: "someTag=someValue" };
+        var changes = { CustomUserData: "" };
 
         sns.endpoint.update(endpointArn, changes)
             .then(sns.endpoint.get(endpointArn))
@@ -115,6 +119,18 @@ describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() 
         }, done);
     });
 
+    it('can receive a message with a custom payload', function(done) {
+        sns.endpoint.message(endpointArn, 'test custom message!', {
+            fieldOne: 'Value One',
+            fieldTwo: 'Value Two'
+        }).then(function(result) {
+            assert(!!result.ResponseMetadata);
+            assert(!!result.MessageId && result.MessageId.length > 0);
+            done();
+        }, done);
+    });
+
+
     it('can be deleted', function(done) {
         sns.endpoint.delete(endpointArn).then(function(result) {
             assert(!!result.ResponseMetadata);
@@ -128,7 +144,8 @@ describe('Endpoint; using iOS device token '+ config.iosDeviceToken, function() 
  * Topic Tests
  */
 describe('Topic', function() {
-    var topicArn = null;
+    var topicArn = null,
+        subscriptionArn = null;
 
     this.timeout(config.timeout);
 
@@ -173,11 +190,81 @@ describe('Topic', function() {
         }, done);
     });
 
+    it('can subscribe mobile devices', function(done) {
+        sns.endpoint.create(config.platformApplicationArn, config.iosDeviceToken).then(function(data) {
+            endpointArn = data.EndpointArn;
 
+            //** subscribe, expecting immediate confirmation; if the user already consented to push
+            //** then they will not need to confirm this subscription
+            sns.topic.subscribeMobile(topicArn, endpointArn).then(function(result) {
+                subscriptionArn = result
+
+                assert(result && !!result.SubscriptionArn);
+                done();
+            }, done);
+        }, done);
+    });
+
+    it('can send messages to subscribers', function(done) {
+        sns.topic.message(topicArn, 'test topic message').then(function(result) {
+            done();
+        }, done);
+    });
+
+
+/*
     it('can be deleted', function(done) {
         sns.topic.delete(topicArn).then(function(result) {
             assert(!!result.ResponseMetadata);
             done();
         }, done);
+    });
+*/
+});
+
+
+describe('Building Messages', function() {
+    describe('Topic Messages', function() {
+        it('messages include a "default" platform entry', function() {
+            var msg = sns.messageBuilder('this is a test')
+                .platforms(['APNS'])
+                .toJSON();
+
+            assert(!!msg.default);
+        });
+
+    });
+    
+    describe('APNS Messages', function() {
+        it('can build messages for APNS', function() {
+            var msg = sns.messageBuilder('this is a test')
+                .platforms(['APNS'])
+                .toJSON();
+
+            assert(!!msg.APNS);
+        });
+
+        it('can build a message that includes a badge update', function() {
+            var msg = sns.messageBuilder('this is a test')
+                .platforms(['APNS'])
+                .showBadge(2)
+                .toJSON();
+
+            assert(!!msg.APNS);
+
+            var obj = JSON.parse(msg.APNS);
+            assert(!!obj.aps.badge && obj.aps.badge == 2);
+        });
+
+        it('can build a message that includes a custom payload', function() {
+            var msg = sns.messageBuilder('this is a test', { someKey: 'someValue' })
+                .platforms(['APNS'])
+                .toJSON();
+
+            assert(!!msg.APNS);
+
+            var obj = JSON.parse(msg.APNS);
+            assert(!!obj.aps.alert.someKey);
+        });
     });
 });

@@ -176,26 +176,18 @@ var endpoint = {
      * @param {Object} args additional arguments to be mixed in with the message object
      */
     message: function(arn, msg, args) {
-        var sandbox = arn && arn.indexOf(platforms.APNSSandbox) != -1,
-            params = {
-                Message: typeof(msg) !== 'string' ? msg : {},
-                MessageStructure: 'json',
-                TargetArn: arn
-            };
+        var params = {
+            Message: typeof(msg) !== 'string' ? JSON.stringify(msg) : {},
+            MessageStructure: 'json',
+            TargetArn: arn
+        };
 
         //** currently in testing, limited to APNS/APNS_SANDBOX
-        if(typeof(msg) === 'string') {
-            //** ios
-            params.Message[sandbox?platforms.APNSSandbox:platforms.APNS] = JSON.stringify({
-                aps: { 
-                    alert: _.extend({}, { body: msg }, args||{})
-                }
-            });
+        if(typeof(msg) === 'string')
+            params.Message = messageBuilder(msg, args)
+                .platforms(this.platforms)
+                .stringify()
 
-            //** android
-        }
-
-        params.Message = JSON.stringify(params.Message);
         return this.svc.publish(params);
     }
 };
@@ -259,11 +251,109 @@ var topic = {
     delete: function(arn) {
         var params = { TopicArn: arn };
         return this.svc.deleteTopic(params);
+    },
+
+
+    subscribeMobile: function(topicArn, endpoint, protocol) {
+        var params = {
+            TopicArn: topicArn,
+            Protocol: protocol,
+            Endpoint: endpoint
+        };
+
+        return this.svc.subscribe(params);
+    },
+
+
+    /**
+      * shorthand for device specific registrations, assumes the endpoint is an arn, and presets the protocol 
+      * to 'application', which is used for mobile devices
+      */
+    subscribeMobile: function(topicArn, endpointArn) {
+        var params = {
+            TopicArn: topicArn,
+            Protocol: 'application',
+            Endpoint: endpointArn 
+        };
+
+        return this.svc.subscribe(params);
+    },
+
+    message: function(arn, msg, args) {
+        var params = {
+            Message: typeof(msg) !== 'string' ? JSON.stringify(msg) : {},
+            MessageStructure: 'json',
+            TopicArn: arn
+        };
+
+        //** currently in testing, limited to APNS/APNS_SANDBOX
+        if(typeof(msg) === 'string')
+            params.Message = messageBuilder(msg, args)
+                .platforms(this.platforms)
+                .stringify()
+
+        return this.svc.publish(params);
     }
 };
 
 
+/**
+ * a message builder to abstract the individual format for each platform; supports a message, badges, and custom payloads
+ * 
+ * @param {String} msg the message we are building platform specific representations of
+ * @param {Object} args individual platform specific payload arguments (optional)
+ */
+function messageBuilder(msg, args) {
+    var message = msg,
+        supported = [],
+        badge = 0,
+        builders = {};
 
+    //** currently only APNS is supported
+    builders[platforms.APNS] = builders[platforms.APNSSandbox] = function() {
+        return {
+            aps: { 
+                //** adds the custom arguments onto the "alert" object
+                alert: _.extend({}, { body: msg }, args||{}),
+                badge: badge
+            }
+        };
+    }
+
+    //** sets the supported platforms
+    this.platforms = function(list) {
+        if(!Array.isArray(list)) return;
+        supported = list;
+        return this;
+    }
+
+    //** shows/clears badges for the app icon
+    this.showBadge = function(count) {
+        badge = count;
+        return this;
+    }
+    this.clearBadge = function() {
+        badge = 0;
+        return this;
+    }
+
+    this.toJSON = function() {
+        //** create the composite message object based on the supported platforms
+        return _.reduce(supported, function(m, platform) {
+            if(!!builders[platform])
+                m[platform] = JSON.stringify(builders[platform]());
+
+            return m;
+        }, 
+
+        //** support the default message inherently; this is required for publishing to topics
+        { default: msg });
+    }
+
+    this.stringify = function() { return JSON.stringify(this.toJSON()); }
+
+    return this;
+}
 
 //** simple wrapper function for introducing a promise interface
 function wrap(ctx, fn, key) {
@@ -281,8 +371,12 @@ function wrap(ctx, fn, key) {
 
 function snsQ(opt) {
     //** proxy the options unchanged to the aws-sns sdk for creation
-    this.sns = new aws.SNS(opt)
+    this.sns = new aws.SNS((opt=opt||{}))
     this.svc = {};
+
+    //** default the sandbox status and platform support, if not specified
+    this.sandbox = opt.sandbox === true;
+    this.platforms = opt.platforms||[platforms.APNS, platforms.GCM, platforms.ADM];
 
     //** create a curried version of each sns sdk api function, introducing a promise, hoisting it to a service object
     _.each(this.sns.constructor.prototype, function(obj, key) {
@@ -299,6 +393,8 @@ function snsQ(opt) {
     this.application = _.reduce(application, scope, {}); 
     this.endpoint = _.reduce(endpoint, scope, {}); 
     this.topic = _.reduce(topic, scope, {}); 
+
+    this.messageBuilder = messageBuilder;
 }
 
 module.exports = snsQ;
