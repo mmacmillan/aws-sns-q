@@ -19,6 +19,10 @@ var platforms = {
 
 var application = {
     /**
+     * @class application
+     */
+
+    /**
      * creates a platform application object for the specified service
      * 
      * @param {String} name name of the platformApplication object
@@ -254,7 +258,7 @@ var topic = {
     },
 
 
-    subscribeMobile: function(topicArn, endpoint, protocol) {
+    subscribe: function(topicArn, endpoint, protocol) {
         var params = {
             TopicArn: topicArn,
             Protocol: protocol,

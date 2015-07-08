@@ -1,6 +1,6 @@
 {
   "name": "aws-sns-q",
-  "description": "a promise interface for the AWS SNS SDK, focused on mobile functionality",
+  "description": "a promise interface for the AWS SNS SDK",
   "version": "0.0.4",
   "homepage": "https://github.com/mmacmillan/aws-sns-q",
   "author": {
@@ -37,9 +37,10 @@
   },
   "keywords": [
     "aws",
+    "sns",
+    "q",
     "aws sns",
     "aws-sdk",
-    "q",
     "promise"
   ]
 }
