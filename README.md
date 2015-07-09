@@ -3,7 +3,9 @@
 >Provides a facade around the [AWS SNS NodeJS SDK](http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/SNS.html), introducing a promise interface using [Q](https://github.com/kriskowal/q).  
 
 
-The [Amazon Simple Notification Service](http://docs.aws.amazon.com/sns/latest/dg/welcome.html) is a web service that provides message delivery services, centralizing the sending of messages via email, sms, mobile push, http, etc. to your "subscribers".  It allows you to maintain separate applications, each with its own set of subscribers and topics (ie, distribution lists), for sending these messages to.  The support for [mobile push notifications](http://docs.aws.amazon.com/sns/latest/dg/SNSMobilePush.html) is what makes SNS extra awesome, because it allows developers to learn a single API to target multiple mobile device platforms (APS, GCM, ADM).
+The [Amazon Simple Notification Service](http://docs.aws.amazon.com/sns/latest/dg/welcome.html) is a web service that provides centralized message delivery services, making it easy to send messages via email, sms, mobile push, http, etc. to your "subscribers".  The support for [mobile push notifications](http://docs.aws.amazon.com/sns/latest/dg/SNSMobilePush.html) is what makes SNS extra awesome, because it allows developers to learn a single API to target most major mobile device platforms (APS, GCM, ADM).
+
+###What is this library for?
 
 This library, `snsQ`, aims to provide a facade over the SNS SDK, both introducing a promise interface via Q, and a bit of reorganization to the service interface.  ex:
 
@@ -15,6 +17,8 @@ sns.applicaton.endpoints(platformAppArn).then(function(data) {
     });
 });
 ```
+
+###How do you use snsQ?
 
 Initializing `snsQ` is the same as initializing the AWS SDK:
 
